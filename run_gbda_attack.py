@@ -99,12 +99,12 @@ def main(args):
         
     # encode dataset using tokenizer
     if args.dataset == "mnli":
-        testset_key = "validation_%s" % args.mnli_option
+        testset_key = "test"
         preprocess_function = lambda examples: tokenizer(
             examples['premise'], examples['hypothesis'], max_length=100, truncation=True)
     else:
-        text_key = 'text' if (args.dataset in ["ag_news", "imdb", "yelp",'sst']) else 'sentence'
-        testset_key = 'test' if (args.dataset in ["ag_news", "imdb", "yelp",'sst']) else 'validation'
+        text_key = 'sentence'
+        testset_key = 'test'
         preprocess_function = lambda examples: tokenizer(examples[text_key], max_length=256, truncation=True)
     encoded_dataset = dataset.map(preprocess_function, batched=True)
         
@@ -133,16 +133,7 @@ def main(args):
     assert args.start_index < len(encoded_dataset[testset_key]), 'Starting index %d is larger than dataset length %d' % (args.start_index, len(encoded_dataset[testset_key]))
     end_index = min(args.start_index + args.num_samples, len(encoded_dataset[testset_key]))
 
-    if args.dataset == 'mnli':
-        selected_idx_list = []
-        with open("attack_set_idx/mnli_attack_idx_seed200.txt", 'r', encoding = 'utf-8') as f:
-            for line in f:
-                selected_idx_list.append(int(line.strip()))
-        np.random.seed(107)
-        index_list = np.random.choice(len(selected_idx_list), len(selected_idx_list), replace = False)
-        selected_idx_list = [selected_idx_list[x] for x in index_list]
-    else:
-        selected_idx_list = [x for x in range(len(encoded_dataset[testset_key]))]
+    selected_idx_list = [x for x in range(len(encoded_dataset[testset_key]))]
     # for idx in selected_idx_list:
     # for idx in range(args.start_index, end_index):
     for idx in tqdm.tqdm(range(len(selected_idx_list))):

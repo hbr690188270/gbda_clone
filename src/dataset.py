@@ -28,13 +28,16 @@ def load_data(args):
         dataset = load_dataset("yelp_polarity")
         num_labels = 2
     elif args.dataset == "mnli":
-        dataset = load_dataset("glue", "mnli")
+        # dataset = load_dataset("glue", "mnli")
+        dataset = load_dataset_mnli()
         num_labels = 3
     elif args.dataset == 'sst':
-        data_files = {'train': "train.tsv", 'test': "test.tsv"}
-        dataset = load_dataset("sst-2", data_files = data_files, column_names = ['text', 'label'])
+        # data_files = {'train': "train.tsv", 'test': "test.tsv"}
+        # dataset = load_dataset("sst-2", data_files = data_files, column_names = ['text', 'label'])
+        dataset = load_dataset_sst()
+        # dataset = LocalSSTDataset()
         num_labels = 2
-    dataset = dataset.shuffle(seed=0)
+    # dataset = dataset.shuffle(seed=0)
     
     
 
@@ -73,4 +76,64 @@ class IMDBDataset():
             filtered_texts.append(filtered_text)
         return {"sentence": filtered_texts}
 
+def load_dataset_sst():
+    def preprocess_fn(examples):
+        sentence_list = []
+        label_list = []
+        for example in examples['text']:
+            sentence, label = example.strip().split('\t', 1)
+            sentence_list.append(sentence)
+            label_list.append(int(label))
+        return {'sentence': sentence_list, 'label': label_list}
 
+    dataset_path =  'sst-2/'
+    data_files = {"train": dataset_path + "train.tsv", "valid": dataset_path + "valid.tsv", "test": dataset_path + "test.tsv"}
+    dataset_dict = datasets.load_dataset("text", data_files = data_files)
+    dataset_dict = dataset_dict.map(preprocess_fn, batched = True)
+    return dataset_dict
+
+def load_dataset_mnli():
+    def preprocess_fn(examples):
+        prem_list = []
+        hyp_list = []
+        label_list = []
+        for example in examples['text']:
+            sen1, sen2, label = example.split('\t',2)
+            prem_list.append(sen1)
+            hyp_list.append(sen2)
+            label_list.append(int(label))
+        return {'premise': prem_list,'hypothesis': hyp_list, 'label': label_list}
+
+    dataset_path =  'mnli-3/'
+    data_files = {"train": dataset_path + "train.tsv", "valid": dataset_path + "valid.tsv", "test": dataset_path + "test.tsv"}
+    dataset_dict = datasets.load_dataset("text", data_files = data_files)
+    with open("attack_set_idx/mnli_attack_idx_seed200.txt", 'r', encoding = 'utf-8') as f:
+        attack_idxs = f.readlines()
+    attack_idxs = [int(x) for x in attack_idxs]
+    attack_idxs = np.array(attack_idxs)
+    dataset_dict["test"] = dataset_dict["test"].select(attack_idxs)
+    dataset_dict = dataset_dict.map(preprocess_fn, batched = True)
+    return dataset_dict
+
+
+class LocalSSTDataset():
+    def __init__(self, ) -> None:
+        dataset_path =  'sst-2/'
+        data_files = {"train": dataset_path + "train.tsv", "valid": dataset_path + "valid.tsv", "test": dataset_path + "test.tsv"}
+        dataset_dict = datasets.load_dataset("text", data_files = data_files)
+        train_set, valid_set, test_set = dataset_dict['train'],dataset_dict['valid'],dataset_dict['test']
+
+        self.train_dataset = train_set.map(self.preprocess_fn, batched=True,)
+        self.valid_dataset = valid_set.map(self.preprocess_fn, batched=True,)    
+        self.test_dataset = test_set.map(self.preprocess_fn, batched=True,)    
+
+    def preprocess_fn(self, examples):
+        sentence_list = []
+        label_list = []
+        for example in examples['text']:
+            sentence, label = example.strip().split('\t', 1)
+            sentence_list.append(sentence)
+            label_list.append(int(label))
+        return {'sentence': sentence_list, 'label': label_list}
+
+# class LocalNLIDataset():
