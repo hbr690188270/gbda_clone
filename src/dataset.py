@@ -115,6 +115,68 @@ def load_dataset_mnli():
     dataset_dict = dataset_dict.map(preprocess_fn, batched = True)
     return dataset_dict
 
+def load_dataset_rte():
+    def preprocess_fn(examples):
+        prem_list = []
+        hyp_list = []
+        label_list = []
+        for example in examples['text']:
+            sen1, sen2, label = example.split('\t',2)
+            prem_list.append(sen1)
+            hyp_list.append(sen2)
+            label_list.append(int(label))
+        return {'premise': prem_list,'hypothesis': hyp_list, 'label': label_list}
+
+    dataset_path =  'rte-2/'
+    data_files = {"train": dataset_path + "train.tsv", "valid": dataset_path + "valid.tsv", "test": dataset_path + "test.tsv"}
+    dataset_dict = datasets.load_dataset("text", data_files = data_files)
+    dataset_dict = dataset_dict.map(preprocess_fn, batched = True)
+    return dataset_dict
+
+def load_dataset_qnli():
+    def preprocess_fn(examples):
+        prem_list = []
+        hyp_list = []
+        label_list = []
+        for example in examples['text']:
+            sen1, sen2, label = example.split('\t',2)
+            prem_list.append(sen1)
+            hyp_list.append(sen2)
+            label_list.append(int(label))
+        return {'premise': prem_list,'hypothesis': hyp_list, 'label': label_list}
+
+    dataset_path =  'qnli/'
+    data_files = {"train": dataset_path + "train.tsv", "valid": dataset_path + "valid.tsv", "test": dataset_path + "test.tsv"}
+    dataset_dict = datasets.load_dataset("text", data_files = data_files)
+    with open("attack_set_idx/qnli_attack_idx_seed1000.txt", 'r', encoding = 'utf-8') as f:
+        attack_idxs = f.readlines()
+    attack_idxs = [int(x) for x in attack_idxs]
+    attack_idxs = np.array(attack_idxs)
+    dataset_dict["test"] = dataset_dict["test"].select(attack_idxs)
+    dataset_dict = dataset_dict.map(preprocess_fn, batched = True)
+    return dataset_dict
+
+def load_dataset_ag():
+    def preprocess_fn(examples):
+        sentence_list = []
+        label_list = []
+        for example in examples['text']:
+            sen1, sen2, label = example.strip().split("\t", 2)
+            sentence_list.append(sen1 + "_" + sen2)
+            label_list.append(int(label))
+        return {'sentence': sentence_list, 'label': label_list}
+
+    dataset_path =  'agnews/'
+    data_files = {"train": dataset_path + "train.tsv", "valid": dataset_path + "valid.tsv", "test": dataset_path + "test.tsv"}
+    dataset_dict = datasets.load_dataset("text", data_files = data_files)
+    with open("attack_set_idx/agnews_attack_idx.txt", 'r', encoding = 'utf-8') as f:
+        attack_idxs = f.readlines()
+    attack_idxs = [int(x) for x in attack_idxs]
+    attack_idxs = np.array(attack_idxs)
+    dataset_dict["test"] = dataset_dict["test"].select(attack_idxs)
+    dataset_dict = dataset_dict.map(preprocess_fn, batched = True)
+    return dataset_dict
+
 
 class LocalSSTDataset():
     def __init__(self, ) -> None:
